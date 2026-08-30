@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: vira-api
+    name: vira-app
     runtime: docker
-    dockerfilePath: ./apps/api/Dockerfile
-    dockerContext: ./apps/api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
     envVars:
       - key: DATABASE_URL
@@ -14,9 +14,13 @@ services:
         sync: false
     healthCheckPath: /health
 
+# One service, one URL: nginx on the platform's assigned $PORT reverse-proxies
+# / to the Next.js frontend and /api/* to the FastAPI backend, both running
+# inside the same container. See Dockerfile + start.sh + nginx.conf.template.
+#
 # Notes:
-# - The free SQLite default works for demoing but resets on redeploy.
-#   For a persistent backend, add a Render PostgreSQL instance and set
-#   DATABASE_URL to postgresql+asyncpg://... instead.
-# - After deploying, set FRONTEND_ORIGIN in the Render dashboard to your
-#   Vercel URL (e.g. https://vira-web.vercel.app) so CORS allows it.
+# - Free-tier SQLite resets on redeploy and the service sleeps when idle
+#   (cold start on first request). For anything persistent, add a Render
+#   PostgreSQL instance and point DATABASE_URL at it -- no code changes needed.
+# - Demo data seeds automatically on boot (see start.sh), so the deployed URL
+#   is usable immediately with the printed demo logins.

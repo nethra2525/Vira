@@ -26,7 +26,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    # In combined deployment, frontend and backend share an origin via nginx,
+    # so CORS is only exercised in local dev (frontend on :3000, backend on :8000).
+    allow_origins=[settings.frontend_origin, "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,12 +40,17 @@ async def health():
     return {"status": "ok", "ai_provider_mode": settings.ai_provider_mode}
 
 
-app.include_router(auth.router)
-app.include_router(candidates.router)
-app.include_router(resumes.router)
-app.include_router(jobs.router)
-app.include_router(matching.router)
-app.include_router(assessments.router)
-app.include_router(interviews.router)
-app.include_router(vira.router)
-app.include_router(admin.router)
+@app.get("/api/health")
+async def api_health():
+    return {"status": "ok", "ai_provider_mode": settings.ai_provider_mode}
+
+
+app.include_router(auth.router, prefix="/api")
+app.include_router(candidates.router, prefix="/api")
+app.include_router(resumes.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api")
+app.include_router(matching.router, prefix="/api")
+app.include_router(assessments.router, prefix="/api")
+app.include_router(interviews.router, prefix="/api")
+app.include_router(vira.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")

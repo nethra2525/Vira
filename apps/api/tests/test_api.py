@@ -36,7 +36,7 @@ async def test_health(client):
 @pytest.mark.anyio
 async def test_register_and_login_candidate(client):
     resp = await client.post(
-        "/auth/register",
+        "/api/auth/register",
         json={
             "email": "test.candidate@example.com",
             "password": "TestPass123!",
@@ -48,12 +48,12 @@ async def test_register_and_login_candidate(client):
     assert "access_token" in resp.json()
 
     resp = await client.post(
-        "/auth/login", json={"email": "test.candidate@example.com", "password": "TestPass123!"}
+        "/api/auth/login", json={"email": "test.candidate@example.com", "password": "TestPass123!"}
     )
     assert resp.status_code == 200
     token = resp.json()["access_token"]
 
-    me_resp = await client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    me_resp = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me_resp.status_code == 200
     assert me_resp.json()["role"] == "candidate"
 
@@ -61,7 +61,7 @@ async def test_register_and_login_candidate(client):
 @pytest.mark.anyio
 async def test_recruiter_requires_company_name(client):
     resp = await client.post(
-        "/auth/register",
+        "/api/auth/register",
         json={
             "email": "test.recruiter@example.com",
             "password": "TestPass123!",
@@ -75,7 +75,7 @@ async def test_recruiter_requires_company_name(client):
 @pytest.mark.anyio
 async def test_recruiter_can_create_and_publish_job(client):
     resp = await client.post(
-        "/auth/register",
+        "/api/auth/register",
         json={
             "email": "recruiter2@example.com",
             "password": "TestPass123!",
@@ -87,7 +87,7 @@ async def test_recruiter_can_create_and_publish_job(client):
     token = resp.json()["access_token"]
 
     job_resp = await client.post(
-        "/jobs",
+        "/api/jobs",
         headers={"Authorization": f"Bearer {token}"},
         json={
             "title": "Backend Engineer",
@@ -99,14 +99,14 @@ async def test_recruiter_can_create_and_publish_job(client):
     assert job_resp.status_code == 201
     job_id = job_resp.json()["id"]
 
-    list_resp = await client.get("/jobs")
+    list_resp = await client.get("/api/jobs")
     assert any(j["id"] == job_id for j in list_resp.json())
 
 
 @pytest.mark.anyio
 async def test_candidate_match_and_growth_path(client):
     reg_resp = await client.post(
-        "/auth/register",
+        "/api/auth/register",
         json={
             "email": "candidate2@example.com",
             "password": "TestPass123!",
@@ -117,7 +117,7 @@ async def test_candidate_match_and_growth_path(client):
     token = reg_resp.json()["access_token"]
 
     rec_resp = await client.post(
-        "/auth/register",
+        "/api/auth/register",
         json={
             "email": "recruiter3@example.com",
             "password": "TestPass123!",
@@ -129,7 +129,7 @@ async def test_candidate_match_and_growth_path(client):
     rec_token = rec_resp.json()["access_token"]
 
     job_resp = await client.post(
-        "/jobs",
+        "/api/jobs",
         headers={"Authorization": f"Bearer {rec_token}"},
         json={
             "title": "Data Analyst",
@@ -144,7 +144,7 @@ async def test_candidate_match_and_growth_path(client):
     job_id = job_resp.json()["id"]
 
     match_resp = await client.post(
-        f"/matching/analyze?job_id={job_id}", headers={"Authorization": f"Bearer {token}"}
+        f"/api/matching/analyze?job_id={job_id}", headers={"Authorization": f"Bearer {token}"}
     )
     assert match_resp.status_code == 200
     body = match_resp.json()
@@ -154,7 +154,7 @@ async def test_candidate_match_and_growth_path(client):
     assert "SQL" in body["missing_must_have"]
 
     growth_resp = await client.get(
-        f"/matching/{job_id}/growth-path", headers={"Authorization": f"Bearer {token}"}
+        f"/api/matching/{job_id}/growth-path", headers={"Authorization": f"Bearer {token}"}
     )
     assert growth_resp.status_code == 200
     growth = growth_resp.json()

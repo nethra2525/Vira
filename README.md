@@ -68,7 +68,7 @@ prototype, not a finished commercial product — see **Scope & Honest Limitation
 
 ---
 
-## Local setup
+## Local setup (running frontend and backend as two separate dev servers)
 
 ### Backend
 ```bash
@@ -83,7 +83,8 @@ Demo logins (printed by the seed script):
 - Candidate: `priya.candidate@viradmo.dev` / `DemoPass123!`
 - Recruiter: `arjun.recruiter@northwindanalytics.dev` / `DemoPass123!`
 
-API docs: `http://localhost:8000/docs`
+All routes live under `/api` (e.g. `http://localhost:8000/api/auth/login`).
+Interactive docs: `http://localhost:8000/docs`
 
 ### Frontend
 ```bash
@@ -92,7 +93,10 @@ npm install
 cp .env.local.example .env.local
 npm run dev
 ```
-Visit `http://localhost:3000`.
+Visit `http://localhost:3000`. The frontend calls `${NEXT_PUBLIC_API_URL}/api/...`
+— leave `NEXT_PUBLIC_API_URL` unset for the combined-deployment case (relative
+`/api` calls through nginx), or set it to `http://localhost:8000` for local dev
+against a separately-running backend.
 
 > Note: `app/layout.tsx` uses system font fallbacks rather than `next/font/google`,
 > because this sandbox has no outbound access to Google Fonts. If you're deploying
@@ -110,51 +114,50 @@ pytest tests/ -v
 
 ## Deploying your own live link
 
-I can't create a live URL for you from here — Vercel deployment needs your own
-account, and this environment has no network access to vercel.com. But the repo
-is ready for a genuine one-click deploy. Two pieces, deployed separately:
+I can't create a live URL for you from here — deployment needs your own hosting
+account, and this environment has no network access to Render/Vercel/etc. But
+the repo is now a **single combined deployment**: one Docker image runs the
+Next.js frontend, the FastAPI backend, and an nginx reverse proxy together, so
+you get **one URL** for the whole app instead of juggling two separate services
+and CORS config.
 
-### 1. Frontend → Vercel (~2 minutes)
+I tested this exact setup end-to-end in the sandbox before shipping it (backend
++ frontend + nginx all running together, verified the compiled frontend bundle
+calls `/api/*` same-origin, confirmed login/job-listing/etc. work through the
+single proxied port) — so this should deploy clean.
 
-**Option A — push to GitHub, then import (recommended):**
-```bash
-# from the unzipped vira/ folder — it's already a git repo with one commit
-git remote add origin https://github.com/<your-username>/vira.git
-git push -u origin master
-```
-Then in Vercel: **Add New Project → Import** your `vira` repo →
-set **Root Directory** to `apps/web` → deploy.
+### Deploy to Render (recommended — reads `render.yaml` automatically)
+1. Push this repo to GitHub:
+   ```bash
+   git remote add origin https://github.com/<your-username>/vira.git
+   git push -u origin master
+   ```
+2. In Render: **New → Blueprint**, point it at your repo. It builds the root
+   `Dockerfile` (frontend + backend + nginx combined) automatically.
+3. Once live, set `FRONTEND_ORIGIN` in the Render dashboard to the same URL
+   Render gives you (e.g. `https://vira-app.onrender.com`) — needed for the
+   rare cross-origin case (local dev hitting the deployed API directly).
+4. That's it — demo data seeds automatically on first boot. Visit the URL and
+   log in with the demo accounts printed in the backend logs (or see below).
 
-**Option B — deploy straight from your machine, no GitHub needed:**
-```bash
-cd apps/web
-npx vercel        # first run: log in, link/create project
-npx vercel --prod # deploy to production
-```
+### Alternative: Railway or Fly.io
+Both read a Dockerfile the same way. Point either at this repo's root
+`Dockerfile`, set the `PORT` env var if the platform doesn't inject one
+automatically (Render/Railway/Fly all do by default), and deploy.
 
-Either way, after the first deploy, add an environment variable in the Vercel
-project settings:
-```
-NEXT_PUBLIC_API_URL = <your backend URL from step 2>
-```
-then redeploy (Vercel → Deployments → ⋯ → Redeploy) so the frontend picks it up.
-
-### 2. Backend → Render (or Railway / Fly — any Docker host works)
-
-A `render.yaml` blueprint is included at the repo root.
-1. Push the same repo to GitHub (see above).
-2. In Render: **New → Blueprint**, point it at your repo. It'll read `render.yaml`
-   and build `apps/api` from its `Dockerfile` automatically.
-3. Once deployed, copy the Render URL (e.g. `https://vira-api.onrender.com`).
-4. Set that as `NEXT_PUBLIC_API_URL` in Vercel (step 1), and set `FRONTEND_ORIGIN`
-   in Render to your Vercel URL so CORS allows it.
-5. SSH/shell into the Render service (or run one-off) to seed demo data:
-   `python -m app.seed`.
-
-**Free-tier note:** Render's free tier spins down when idle (cold-start delay on
-first request) and its SQLite file resets on redeploy. For anything beyond a demo,
-attach a Render PostgreSQL instance and point `DATABASE_URL` at it — no code
+**Free-tier note:** Render's free tier spins down when idle (cold-start delay
+on first request after inactivity) and the default SQLite file resets on
+redeploy. Fine for a demo/portfolio link. For anything you want to persist,
+add a managed PostgreSQL instance and point `DATABASE_URL` at it — no code
 changes needed, just the env var.
+
+### If you specifically want the frontend on Vercel
+Vercel doesn't run a persistent Python process, so the combined single-service
+approach above doesn't fit Vercel directly. If you'd rather use Vercel for the
+frontend specifically, deploy the backend separately (Render, using
+`apps/api/Dockerfile`) and the frontend on Vercel with `NEXT_PUBLIC_API_URL`
+pointing at the backend's URL — this was the two-service setup from an earlier
+version of this README, still fully supported, just more moving parts.
 
 ---
 

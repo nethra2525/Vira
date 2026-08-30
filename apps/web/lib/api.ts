@@ -1,4 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// In combined-deployment mode (single container behind nginx), leave
+// NEXT_PUBLIC_API_URL unset so requests go to the same origin at /api/*,
+// which nginx proxies to the backend. For local dev with two separate
+// servers, set NEXT_PUBLIC_API_URL=http://localhost:8000 -- the backend
+// also serves everything under /api, so this works unchanged either way.
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || "") + "/api";
 
 export class ApiError extends Error {
   status: number;
