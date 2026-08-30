@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: vira-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./vira.db
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        sync: false
+    healthCheckPath: /health
+
+# Notes:
+# - The free SQLite default works for demoing but resets on redeploy.
+#   For a persistent backend, add a Render PostgreSQL instance and set
+#   DATABASE_URL to postgresql+asyncpg://... instead.
+# - After deploying, set FRONTEND_ORIGIN in the Render dashboard to your
+#   Vercel URL (e.g. https://vira-web.vercel.app) so CORS allows it.
