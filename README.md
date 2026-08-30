@@ -108,11 +108,53 @@ pytest tests/ -v
 
 ---
 
-## Deployment (not yet done, but configured for)
-- **Frontend** → Vercel (standard Next.js deploy)
-- **Backend** → any container host (Render / Fly / Railway) via Docker
-- **Database** → managed PostgreSQL — swap `DATABASE_URL` in `.env`, no code changes needed
-- Set `FRONTEND_ORIGIN` on the backend to your deployed frontend URL for CORS
+## Deploying your own live link
+
+I can't create a live URL for you from here — Vercel deployment needs your own
+account, and this environment has no network access to vercel.com. But the repo
+is ready for a genuine one-click deploy. Two pieces, deployed separately:
+
+### 1. Frontend → Vercel (~2 minutes)
+
+**Option A — push to GitHub, then import (recommended):**
+```bash
+# from the unzipped vira/ folder — it's already a git repo with one commit
+git remote add origin https://github.com/<your-username>/vira.git
+git push -u origin master
+```
+Then in Vercel: **Add New Project → Import** your `vira` repo →
+set **Root Directory** to `apps/web` → deploy.
+
+**Option B — deploy straight from your machine, no GitHub needed:**
+```bash
+cd apps/web
+npx vercel        # first run: log in, link/create project
+npx vercel --prod # deploy to production
+```
+
+Either way, after the first deploy, add an environment variable in the Vercel
+project settings:
+```
+NEXT_PUBLIC_API_URL = <your backend URL from step 2>
+```
+then redeploy (Vercel → Deployments → ⋯ → Redeploy) so the frontend picks it up.
+
+### 2. Backend → Render (or Railway / Fly — any Docker host works)
+
+A `render.yaml` blueprint is included at the repo root.
+1. Push the same repo to GitHub (see above).
+2. In Render: **New → Blueprint**, point it at your repo. It'll read `render.yaml`
+   and build `apps/api` from its `Dockerfile` automatically.
+3. Once deployed, copy the Render URL (e.g. `https://vira-api.onrender.com`).
+4. Set that as `NEXT_PUBLIC_API_URL` in Vercel (step 1), and set `FRONTEND_ORIGIN`
+   in Render to your Vercel URL so CORS allows it.
+5. SSH/shell into the Render service (or run one-off) to seed demo data:
+   `python -m app.seed`.
+
+**Free-tier note:** Render's free tier spins down when idle (cold-start delay on
+first request) and its SQLite file resets on redeploy. For anything beyond a demo,
+attach a Render PostgreSQL instance and point `DATABASE_URL` at it — no code
+changes needed, just the env var.
 
 ---
 
