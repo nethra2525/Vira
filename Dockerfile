@@ -26,7 +26,6 @@ WORKDIR /app/web
 COPY apps/web/package.json apps/web/package-lock.json* ./
 RUN npm install --omit=dev --no-audit --no-fund
 COPY --from=web-builder /build/.next ./.next
-COPY --from=web-builder /build/public ./public
 COPY apps/web/next.config.js ./
 
 # --- nginx + startup ---
